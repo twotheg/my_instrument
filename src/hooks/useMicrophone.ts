@@ -1,5 +1,3 @@
-"use client";
-
 import { useRef, useState, useCallback, useEffect } from "react";
 
 interface UseMicrophoneReturn {
@@ -42,7 +40,6 @@ export function useMicrophone(
       streamRef.current = stream;
       setHasPermission(true);
 
-      // AudioContext 생성
       const AudioCtx =
         window.AudioContext ||
         (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -71,18 +68,16 @@ export function useMicrophone(
 
     const tick = () => {
       if (!isListeningRef.current) return;
-
       analyser.getByteTimeDomainData(dataArray);
 
-      // RMS 계산
       let sumSquares = 0;
       for (let i = 0; i < bufferLength; i++) {
-        const normalized = (dataArray[i] - 128) / 128;
-        sumSquares += normalized * normalized;
+        const norm = (dataArray[i] - 128) / 128;
+        sumSquares += norm * norm;
       }
       const rms = Math.sqrt(sumSquares / bufferLength);
-
       setVolume(rms);
+
       if (rms > threshold) {
         onBreathRef.current(rms);
       }

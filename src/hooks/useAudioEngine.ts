@@ -1,5 +1,3 @@
-"use client";
-
 import { useRef, useCallback } from "react";
 
 export type InstrumentType =
@@ -18,24 +16,22 @@ interface ActiveNote {
   filterNode: BiquadFilterNode;
 }
 
-// 악기별 음색 설정
-const INSTRUMENT_CONFIGS: Record<
-  InstrumentType,
-  {
-    type: OscillatorType;
-    harmonics: { ratio: number; gain: number }[];
-    attack: number;
-    decay: number;
-    sustain: number;
-    release: number;
-    filterFreq: number;
-    filterQ: number;
-    filterType: BiquadFilterType;
-    vibrato: boolean;
-    vibratoRate: number;
-    vibratoDepth: number;
-  }
-> = {
+interface InstrumentConfig {
+  type: OscillatorType;
+  harmonics: { ratio: number; gain: number }[];
+  attack: number;
+  decay: number;
+  sustain: number;
+  release: number;
+  filterFreq: number;
+  filterQ: number;
+  filterType: BiquadFilterType;
+  vibrato: boolean;
+  vibratoRate: number;
+  vibratoDepth: number;
+}
+
+const INSTRUMENT_CONFIGS: Record<InstrumentType, InstrumentConfig> = {
   flute: {
     type: "sine",
     harmonics: [
@@ -199,7 +195,8 @@ export function useAudioEngine() {
   const getAudioContext = useCallback((): AudioContext => {
     if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
       audioCtxRef.current = new (window.AudioContext ||
-        (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+        (window as typeof window & { webkitAudioContext: typeof AudioContext })
+          .webkitAudioContext)();
     }
     if (audioCtxRef.current.state === "suspended") {
       audioCtxRef.current.resume();
@@ -207,29 +204,57 @@ export function useAudioEngine() {
     return audioCtxRef.current;
   }, []);
 
+  const stopNote = useCallback((noteKey: string, instrument: InstrumentType = "flute") => {
+    const ctx = audioCtxRef.current;
+    if (!ctx) return;
+    const activeNote = activeNotesRef.current.get(noteKey);
+    if (!activeNote) return;
+
+    const now = ctx.currentTime;
+    const release = INSTRUMENT_CONFIGS[instrument].release;
+
+    activeNote.gainNode.gain.cancelScheduledValues(now);
+    activeNote.gainNode.gain.setValueAtTime(activeNote.gainNode.gain.value, now);
+    activeNote.gainNode.gain.linearRampToValueAtTime(0, now + release);
+
+    setTimeout(() => {
+      activeNote.oscillators.forEach((osc) => {
+        try {
+          osc.stop();
+          osc.disconnect();
+        } catch {
+          // ignore
+        }
+      });
+      try {
+        activeNote.gainNode.disconnect();
+        activeNote.filterNode.disconnect();
+      } catch {
+        // ignore
+      }
+    }, (release + 0.1) * 1000);
+
+    activeNotesRef.current.delete(noteKey);
+  }, []);
+
   const startNote = useCallback(
     (noteKey: string, frequency: number, instrument: InstrumentType, volume: number = 0.7) => {
       const ctx = getAudioContext();
       const config = INSTRUMENT_CONFIGS[instrument];
 
-      // 이미 재생 중이면 중지 후 재시작
       if (activeNotesRef.current.has(noteKey)) {
-        stopNote(noteKey);
+        stopNote(noteKey, instrument);
       }
 
       const now = ctx.currentTime;
       const masterGain = ctx.createGain();
       const filterNode = ctx.createBiquadFilter();
-
       filterNode.type = config.filterType;
       filterNode.frequency.value = config.filterFreq;
       filterNode.Q.value = config.filterQ;
 
       masterGain.gain.setValueAtTime(0, now);
-      masterGain.gain.linearRampToValueAtTime(
-        volume * config.sustain,
-        now + config.attack
-      );
+      masterGain.gain.linearRampToValueAtTime(volume * config.sustain, now + config.attack);
       masterGain.gain.linearRampToValueAtTime(
         volume * config.sustain,
         now + config.attack + config.decay
@@ -243,12 +268,10 @@ export function useAudioEngine() {
       config.harmonics.forEach(({ ratio, gain: harmonicGain }) => {
         const osc = ctx.createOscillator();
         const oscGain = ctx.createGain();
-
         osc.type = ratio === 1 ? config.type : "sine";
         osc.frequency.value = frequency * ratio;
         oscGain.gain.value = harmonicGain * 0.4;
 
-        // 바이브라토
         if (config.vibrato && config.vibratoRate > 0) {
           const vibratoOsc = ctx.createOscillator();
           const vibratoGain = ctx.createGain();
@@ -272,78 +295,8 @@ export function useAudioEngine() {
         filterNode,
       });
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [getAudioContext]
+    [getAudioContext, stopNote]
   );
-
-  const stopNote = useCallback((noteKey: string) => {
-    const ctx = audioCtxRef.current;
-    if (!ctx) return;
-
-    const activeNote = activeNotesRef.current.get(noteKey);
-    if (!activeNote) return;
-
-    const now = ctx.currentTime;
-    const instrument = "flute"; // default release
-    const release = INSTRUMENT_CONFIGS[instrument].release;
-
-    activeNote.gainNode.gain.cancelScheduledValues(now);
-    activeNote.gainNode.gain.setValueAtTime(activeNote.gainNode.gain.value, now);
-    activeNote.gainNode.gain.linearRampToValueAtTime(0, now + release);
-
-    setTimeout(() => {
-      activeNote.oscillators.forEach((osc) => {
-        try {
-          osc.stop();
-          osc.disconnect();
-        } catch {
-          // ignore
-        }
-      });
-      try {
-        activeNote.gainNode.disconnect();
-        activeNote.filterNode.disconnect();
-      } catch {
-        // ignore
-      }
-    }, (release + 0.1) * 1000);
-
-    activeNotesRef.current.delete(noteKey);
-  }, []);
-
-  const stopNoteWithRelease = useCallback((noteKey: string, instrument: InstrumentType) => {
-    const ctx = audioCtxRef.current;
-    if (!ctx) return;
-
-    const activeNote = activeNotesRef.current.get(noteKey);
-    if (!activeNote) return;
-
-    const now = ctx.currentTime;
-    const release = INSTRUMENT_CONFIGS[instrument].release;
-
-    activeNote.gainNode.gain.cancelScheduledValues(now);
-    activeNote.gainNode.gain.setValueAtTime(activeNote.gainNode.gain.value, now);
-    activeNote.gainNode.gain.linearRampToValueAtTime(0, now + release);
-
-    setTimeout(() => {
-      activeNote.oscillators.forEach((osc) => {
-        try {
-          osc.stop();
-          osc.disconnect();
-        } catch {
-          // ignore
-        }
-      });
-      try {
-        activeNote.gainNode.disconnect();
-        activeNote.filterNode.disconnect();
-      } catch {
-        // ignore
-      }
-    }, (release + 0.1) * 1000);
-
-    activeNotesRef.current.delete(noteKey);
-  }, []);
 
   const stopAllNotes = useCallback(() => {
     activeNotesRef.current.forEach((_, key) => {
@@ -351,5 +304,5 @@ export function useAudioEngine() {
     });
   }, [stopNote]);
 
-  return { startNote, stopNote: stopNoteWithRelease, stopAllNotes };
+  return { startNote, stopNote, stopAllNotes };
 }

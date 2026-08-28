@@ -1,12 +1,12 @@
 {
-  "name": "나의악기",
+  "name": "나의악기 - My Instrument",
   "short_name": "나의악기",
-  "description": "핸드폰으로 연주하는 나만의 악기 앱",
+  "description": "모바일 악기 앱 - 플루트, 리코더, 오카리나 등 다양한 악기를 연주하세요",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1a1a2e",
-  "theme_color": "#7c3aed",
-  "orientation": "portrait",
+  "background_color": "#1e1b4b",
+  "theme_color": "#1e1b4b",
+  "orientation": "landscape",
   "icons": [
     {
       "src": "/icon-192.png",

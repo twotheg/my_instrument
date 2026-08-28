@@ -8,13 +8,13 @@ export interface Note {
   isSharp: boolean;
   isFlat: boolean;
   color: string;      // 버튼 색상
+  blackKeyColor: string; // 검은 건반 색상
   row: number;        // 0: 자연음, 1: 샾/플랫
+  pianoPosition: number; // 피아노 건반 위치 (반음 기준 0~11)
 }
 
 // 주파수 계산 함수 (A4 = 440Hz 기준)
 function noteFrequency(semitones: number, octave: number): number {
-  // C4 = 261.63Hz, A4 = 440Hz
-  // semitone from C4: C=0, C#=1, D=2, D#=3, E=4, F=5, F#=6, G=7, G#=8, A=9, A#=10, B=11
   const c4 = 261.63;
   const diff = semitones + (octave - 4) * 12;
   return c4 * Math.pow(2, diff / 12);
@@ -33,7 +33,9 @@ export function generateNotes(octave: number = 4): Note[] {
       isSharp: false,
       isFlat: false,
       color: "#e74c3c",
+      blackKeyColor: "",
       row: 0,
+      pianoPosition: 0,
     },
     {
       id: `D${octave}`,
@@ -45,7 +47,9 @@ export function generateNotes(octave: number = 4): Note[] {
       isSharp: false,
       isFlat: false,
       color: "#e67e22",
+      blackKeyColor: "",
       row: 0,
+      pianoPosition: 2,
     },
     {
       id: `E${octave}`,
@@ -57,7 +61,9 @@ export function generateNotes(octave: number = 4): Note[] {
       isSharp: false,
       isFlat: false,
       color: "#f1c40f",
+      blackKeyColor: "",
       row: 0,
+      pianoPosition: 4,
     },
     {
       id: `F${octave}`,
@@ -69,7 +75,9 @@ export function generateNotes(octave: number = 4): Note[] {
       isSharp: false,
       isFlat: false,
       color: "#2ecc71",
+      blackKeyColor: "",
       row: 0,
+      pianoPosition: 5,
     },
     {
       id: `G${octave}`,
@@ -81,7 +89,9 @@ export function generateNotes(octave: number = 4): Note[] {
       isSharp: false,
       isFlat: false,
       color: "#1abc9c",
+      blackKeyColor: "",
       row: 0,
+      pianoPosition: 7,
     },
     {
       id: `A${octave}`,
@@ -93,7 +103,9 @@ export function generateNotes(octave: number = 4): Note[] {
       isSharp: false,
       isFlat: false,
       color: "#3498db",
+      blackKeyColor: "",
       row: 0,
+      pianoPosition: 9,
     },
     {
       id: `B${octave}`,
@@ -105,7 +117,9 @@ export function generateNotes(octave: number = 4): Note[] {
       isSharp: false,
       isFlat: false,
       color: "#9b59b6",
+      blackKeyColor: "",
       row: 0,
+      pianoPosition: 11,
     },
   ];
 
@@ -120,7 +134,9 @@ export function generateNotes(octave: number = 4): Note[] {
       isSharp: true,
       isFlat: false,
       color: "#c0392b",
+      blackKeyColor: "#c0392b",
       row: 1,
+      pianoPosition: 1,
     },
     {
       id: `D#${octave}`,
@@ -132,7 +148,9 @@ export function generateNotes(octave: number = 4): Note[] {
       isSharp: true,
       isFlat: false,
       color: "#d35400",
+      blackKeyColor: "#d35400",
       row: 1,
+      pianoPosition: 3,
     },
     {
       id: `F#${octave}`,
@@ -144,7 +162,9 @@ export function generateNotes(octave: number = 4): Note[] {
       isSharp: true,
       isFlat: false,
       color: "#27ae60",
+      blackKeyColor: "#27ae60",
       row: 1,
+      pianoPosition: 6,
     },
     {
       id: `G#${octave}`,
@@ -156,7 +176,9 @@ export function generateNotes(octave: number = 4): Note[] {
       isSharp: true,
       isFlat: false,
       color: "#16a085",
+      blackKeyColor: "#16a085",
       row: 1,
+      pianoPosition: 8,
     },
     {
       id: `A#${octave}`,
@@ -168,7 +190,9 @@ export function generateNotes(octave: number = 4): Note[] {
       isSharp: true,
       isFlat: false,
       color: "#2980b9",
+      blackKeyColor: "#2980b9",
       row: 1,
+      pianoPosition: 10,
     },
   ];
 
@@ -176,14 +200,16 @@ export function generateNotes(octave: number = 4): Note[] {
 }
 
 export const INSTRUMENTS = [
-  { id: "flute", name: "플루트 🎵", emoji: "🎵" },
-  { id: "recorder", name: "리코더 🪈", emoji: "🪈" },
-  { id: "ocarina", name: "오카리나 🫙", emoji: "🫙" },
-  { id: "saxophone", name: "색소폰 🎷", emoji: "🎷" },
-  { id: "trumpet", name: "트럼펫 🎺", emoji: "🎺" },
-  { id: "violin", name: "바이올린 🎻", emoji: "🎻" },
-  { id: "clarinet", name: "클라리넷 🎶", emoji: "🎶" },
-  { id: "harmonica", name: "하모니카 🎸", emoji: "🎸" },
+  { id: "flute", name: "플루트", emoji: "🎵" },
+  { id: "recorder", name: "리코더", emoji: "🪈" },
+  { id: "ocarina", name: "오카리나", emoji: "🫙" },
+  { id: "saxophone", name: "색소폰", emoji: "🎷" },
+  { id: "trumpet", name: "트럼펫", emoji: "🎺" },
+  { id: "violin", name: "바이올린", emoji: "🎻" },
+  { id: "clarinet", name: "클라리넷", emoji: "🎶" },
+  { id: "harmonica", name: "하모니카", emoji: "🎸" },
 ] as const;
 
 export const OCTAVES = [3, 4, 5] as const;
+
+export type InstrumentId = typeof INSTRUMENTS[number]["id"];
