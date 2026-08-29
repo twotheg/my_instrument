@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { generateNotes, INSTRUMENTS, OCTAVES, type Note } from "./lib/notes";
+import { generateKeyboardNotes, INSTRUMENTS, OCTAVES, type Note } from "./lib/notes";
 import { useAudioEngine, type InstrumentType } from "./hooks/useAudioEngine";
 import { useMicrophone } from "./hooks/useMicrophone";
 
@@ -69,7 +69,6 @@ export default function App() {
   const [micMode, setMicMode] = useState(false);
   const [currentNote, setCurrentNote] = useState<Note | null>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(true);
-  const [showInstrumentMenu, setShowInstrumentMenu] = useState(false);
 
   const pressedNotesRef = useRef<Set<string>>(new Set());
   const currentNoteRef = useRef<Note | null>(null);
@@ -78,7 +77,8 @@ export default function App() {
   const { startNote, stopNote, stopAllNotes } = useAudioEngine();
   const { installable, install } = usePWAInstall();
 
-  const notes = generateNotes(selectedOctave);
+  // 폰 화면 한 줄에 담을 두 옥타브 분량(자연음 14개 + 샾/플랫 10개)
+  const notes = generateKeyboardNotes(selectedOctave);
   const naturalNotes = notes.filter((n) => !n.isSharp && !n.isFlat);
   const sharpNotes = notes.filter((n) => n.isSharp || n.isFlat);
 
@@ -86,7 +86,7 @@ export default function App() {
     (volume: number) => {
       if (!micModeRef.current) return;
       pressedNotesRef.current.forEach((noteId) => {
-        const note = generateNotes(selectedOctave).find((n) => n.id === noteId);
+        const note = generateKeyboardNotes(selectedOctave).find((n) => n.id === noteId);
         if (note) {
           const vol = Math.min(1, volume * 8);
           startNote(noteId, note.frequency, selectedInstrument, vol);
@@ -167,7 +167,6 @@ export default function App() {
         userSelect: "none",
         WebkitUserSelect: "none",
       }}
-      onClick={() => setShowInstrumentMenu(false)}
     >
       {/* ═══ HEADER ═══ */}
       <header
@@ -187,6 +186,15 @@ export default function App() {
               <div className="text-white font-bold" style={{ fontSize: "13px" }}>나의악기</div>
               <div className="text-purple-400" style={{ fontSize: "9px" }}>My Instrument</div>
             </div>
+          </div>
+
+          {/* 현재 선택된 악기 */}
+          <div
+            className="flex items-center gap-1 px-2 py-0.5 rounded-lg flex-shrink-0"
+            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+          >
+            <span style={{ fontSize: "13px" }}>{selectedInstrumentInfo?.emoji}</span>
+            <span className="text-gray-300" style={{ fontSize: "10px" }}>{selectedInstrumentInfo?.name}</span>
           </div>
 
           {/* 현재 연주 중인 음 */}
@@ -260,56 +268,6 @@ export default function App() {
             ))}
           </div>
 
-          {/* 악기 선택 드롭다운 */}
-          <div className="relative" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => setShowInstrumentMenu((v) => !v)}
-              className="flex items-center gap-1 rounded-lg font-semibold text-white transition-all"
-              style={{
-                padding: "4px 8px",
-                fontSize: "11px",
-                background: "rgba(255,255,255,0.1)",
-                border: "1px solid rgba(255,255,255,0.12)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              <span>{selectedInstrumentInfo?.emoji}</span>
-              <span>{selectedInstrumentInfo?.name}</span>
-              <span className="text-gray-400" style={{ fontSize: "8px" }}>{showInstrumentMenu ? "▲" : "▼"}</span>
-            </button>
-
-            {showInstrumentMenu && (
-              <div
-                className="absolute right-0 top-full mt-1 z-50 rounded-xl overflow-hidden"
-                style={{
-                  background: "rgba(10,8,30,0.98)",
-                  border: "1px solid rgba(124,58,237,0.35)",
-                  boxShadow: "0 12px 40px rgba(0,0,0,0.7)",
-                  minWidth: "130px",
-                  backdropFilter: "blur(20px)",
-                }}
-              >
-                {INSTRUMENTS.map((inst, idx) => (
-                  <button
-                    key={inst.id}
-                    onClick={() => { setSelectedInstrument(inst.id as InstrumentType); setShowInstrumentMenu(false); }}
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-left transition-all"
-                    style={{
-                      fontSize: "11px",
-                      background: selectedInstrument === inst.id ? "rgba(124,58,237,0.25)" : "transparent",
-                      color: selectedInstrument === inst.id ? "white" : "#9ca3af",
-                      borderBottom: idx < INSTRUMENTS.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
-                    }}
-                  >
-                    <span>{inst.emoji}</span>
-                    <span className="font-medium">{inst.name}</span>
-                    {selectedInstrument === inst.id && <span className="ml-auto text-purple-400">✓</span>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
           {/* 모드 토글 버튼 */}
           <button
             onClick={toggleMicMode}
@@ -340,6 +298,43 @@ export default function App() {
         </div>
       </header>
 
+      {/* ═══ 악기 선택 STRIP ═══ */}
+      <div
+        className="flex-shrink-0 flex items-center gap-1.5 px-2 overflow-x-auto"
+        style={{
+          height: "44px",
+          background: "rgba(0,0,0,0.25)",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+        }}
+      >
+        {INSTRUMENTS.map((inst) => {
+          const isSelected = selectedInstrument === inst.id;
+          return (
+            <button
+              key={inst.id}
+              onClick={() => setSelectedInstrument(inst.id as InstrumentType)}
+              className="flex-shrink-0 flex items-center gap-1 rounded-lg font-semibold transition-all"
+              style={{
+                padding: "5px 10px",
+                fontSize: "11px",
+                background: isSelected
+                  ? "linear-gradient(135deg, #7c3aed, #2563eb)"
+                  : "rgba(255,255,255,0.07)",
+                color: isSelected ? "white" : "#9ca3af",
+                border: isSelected
+                  ? "1px solid rgba(124,58,237,0.7)"
+                  : "1px solid rgba(255,255,255,0.08)",
+                boxShadow: isSelected ? "0 0 10px rgba(124,58,237,0.45)" : "none",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <span style={{ fontSize: "14px" }}>{inst.emoji}</span>
+              <span>{inst.name}</span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* ═══ MODE BANNER ═══ */}
       <div
         className="flex-shrink-0 flex items-center justify-center"
@@ -363,9 +358,9 @@ export default function App() {
         )}
       </div>
 
-      {/* ═══ PIANO KEYBOARD ═══ */}
+      {/* ═══ NOTE KEYBOARD (네모 박스형) ═══ */}
       <div className="flex-1 min-h-0 p-1.5">
-        <PianoKeyboard
+        <BoxKeyboard
           naturalNotes={naturalNotes}
           sharpNotes={sharpNotes}
           pressedNotes={pressedNotes}
@@ -377,8 +372,18 @@ export default function App() {
   );
 }
 
-// ─── Piano Keyboard ──────────────────────────────────────────────────
-interface PianoKeyboardProps {
+// ─── Box Keyboard (네모 박스형, 폰 최적화) ──────────────────────────────
+// 옥타브 안에서 샾/플랫이 어느 자연음 바로 오른쪽 경계에 오는지 (피아노 순서 그대로)
+// 도-레 사이, 레-미 사이, (미-파 없음), 파-솔 사이, 솔-라 사이, 라-시 사이, (시-도 없음)
+const SHARP_SLOT_MAP: Record<string, number> = {
+  "C#": 0,
+  "D#": 1,
+  "F#": 3,
+  "G#": 4,
+  "A#": 5,
+};
+
+interface BoxKeyboardProps {
   naturalNotes: Note[];
   sharpNotes: Note[];
   pressedNotes: Set<string>;
@@ -386,13 +391,46 @@ interface PianoKeyboardProps {
   onRelease: (note: Note) => void;
 }
 
-function PianoKeyboard({ naturalNotes, sharpNotes, pressedNotes, onPress, onRelease }: PianoKeyboardProps) {
+function BoxKeyboard({ naturalNotes, sharpNotes, pressedNotes, onPress, onRelease }: BoxKeyboardProps) {
+  const naturalCount = naturalNotes.length;
+  const naturalWidthPct = 100 / naturalCount;
+  const accidentalWidthPct = naturalWidthPct * 0.72;
+
   return (
-    <div className="relative w-full h-full" style={{ touchAction: "none" }}>
-      {/* 흰 건반 */}
-      <div className="absolute inset-0 flex gap-px">
+    <div className="relative w-full h-full flex flex-col gap-1" style={{ touchAction: "none" }}>
+      {/* 위쪽 줄: 샾/플랫 박스 — 자연음 사이사이에, 피아노 건반 순서 그대로 배치 */}
+      <div className="relative flex-shrink-0" style={{ height: "36%" }}>
+        {sharpNotes.map((note) => {
+          const rootName = note.name.replace(/\d+$/, "");
+          const localSlot = SHARP_SLOT_MAP[rootName];
+          if (localSlot === undefined) return null;
+
+          // 이 음이 속한 옥타브가 14칸 중 몇 번째부터 시작하는지 (0 또는 7)
+          const blockStart = naturalNotes.findIndex((n) => n.octave === note.octave);
+          if (blockStart === -1) return null;
+
+          const globalWhiteIdx = blockStart + localSlot;
+          const centerPct = (globalWhiteIdx + 1) * naturalWidthPct;
+          const leftPct = centerPct - accidentalWidthPct / 2;
+
+          return (
+            <AccidentalKey
+              key={note.id}
+              note={note}
+              isPressed={pressedNotes.has(note.id)}
+              leftPct={leftPct}
+              widthPct={accidentalWidthPct}
+              onPress={onPress}
+              onRelease={onRelease}
+            />
+          );
+        })}
+      </div>
+
+      {/* 아래쪽 줄: 자연음 박스 — 도부터 한 줄로 */}
+      <div className="flex-1 flex gap-1">
         {naturalNotes.map((note) => (
-          <WhiteKey
+          <NaturalKey
             key={note.id}
             note={note}
             isPressed={pressedNotes.has(note.id)}
@@ -401,21 +439,12 @@ function PianoKeyboard({ naturalNotes, sharpNotes, pressedNotes, onPress, onRele
           />
         ))}
       </div>
-
-      {/* 검은 건반 오버레이 */}
-      <BlackKeyLayer
-        naturalNotes={naturalNotes}
-        sharpNotes={sharpNotes}
-        pressedNotes={pressedNotes}
-        onPress={onPress}
-        onRelease={onRelease}
-      />
     </div>
   );
 }
 
-// ─── White Key ───────────────────────────────────────────────────────
-function WhiteKey({
+// ─── Natural Key (네모 박스, 자연음) ────────────────────────────────────
+function NaturalKey({
   note,
   isPressed,
   onPress,
@@ -438,58 +467,29 @@ function WhiteKey({
       onPointerUp={(e) => { e.preventDefault(); onRelease(note); }}
       onPointerLeave={(e) => { e.preventDefault(); onRelease(note); }}
       onContextMenu={(e) => e.preventDefault()}
-      className="flex-1 relative flex flex-col justify-end items-center rounded-b-2xl transition-transform duration-75 touch-none overflow-hidden"
+      className="flex-1 relative flex flex-col justify-center items-center rounded-xl transition-transform duration-75 touch-none overflow-hidden"
       style={{
         background: isPressed
-          ? `linear-gradient(180deg, ${note.color}40 0%, ${note.color}20 30%, #f8f8ff 100%)`
-          : "linear-gradient(180deg, #dde0f0 0%, #ffffff 50%, #eaeaf8 100%)",
-        border: isPressed
-          ? `2px solid ${note.color}88`
-          : "2px solid #c0c0d8",
-        borderTop: isPressed
-          ? `4px solid ${note.color}cc`
-          : "4px solid #b8b8d0",
+          ? `linear-gradient(160deg, ${note.color}ee 0%, ${note.color}bb 100%)`
+          : `linear-gradient(160deg, ${note.color}38 0%, ${note.color}18 100%)`,
+        border: isPressed ? `2px solid ${note.color}` : `2px solid ${note.color}55`,
         boxShadow: isPressed
-          ? `0 0 20px ${note.color}66, inset 0 4px 8px rgba(0,0,0,0.1)`
-          : "0 6px 16px rgba(0,0,0,0.5), inset 0 -3px 6px rgba(0,0,0,0.1), inset 0 2px 4px rgba(255,255,255,0.8)",
-        transform: isPressed ? "translateY(3px) scaleY(0.98)" : "translateY(0)",
+          ? `0 0 18px ${note.color}88, inset 0 2px 4px rgba(255,255,255,0.25)`
+          : `inset 0 1px 2px rgba(255,255,255,0.12), 0 2px 6px rgba(0,0,0,0.35)`,
+        transform: isPressed ? "scale(0.94)" : "scale(1)",
         zIndex: 1,
-        paddingBottom: "6px",
       }}
       aria-label={note.koreanFull}
       aria-pressed={isPressed}
     >
-      {/* 누름 색상 효과 */}
-      {isPressed && (
-        <div
-          className="absolute inset-x-0 top-0"
-          style={{
-            height: "40%",
-            background: `linear-gradient(180deg, ${note.color}33, transparent)`,
-          }}
-        />
-      )}
-
-      {/* 광택 효과 */}
-      {!isPressed && (
-        <div
-          className="absolute inset-x-0 top-0"
-          style={{
-            height: "30%",
-            background: "linear-gradient(180deg, rgba(255,255,255,0.6), transparent)",
-            borderRadius: "0 0 4px 4px",
-          }}
-        />
-      )}
-
-      {/* 건반 하단 라벨 */}
+      {/* 라벨 */}
       <div className="relative z-10 text-center pointer-events-none">
         <div
           className="font-black leading-none"
           style={{
-            fontSize: "clamp(11px, 2.8vw, 22px)",
-            color: isPressed ? note.color : "#2a2a4a",
-            textShadow: isPressed ? `0 0 12px ${note.color}` : "none",
+            fontSize: "clamp(12px, 2.6vw, 21px)",
+            color: isPressed ? "#ffffff" : note.color,
+            textShadow: isPressed ? "0 0 10px rgba(0,0,0,0.35)" : "none",
             transition: "color 0.05s",
           }}
         >
@@ -498,89 +498,20 @@ function WhiteKey({
         <div
           className="font-semibold mt-0.5 leading-none"
           style={{
-            fontSize: "clamp(8px, 1.6vw, 13px)",
-            color: isPressed ? `${note.color}cc` : "#6060a0",
+            fontSize: "clamp(7px, 1.4vw, 11px)",
+            color: isPressed ? "rgba(255,255,255,0.85)" : `${note.color}bb`,
             transition: "color 0.05s",
           }}
         >
           {note.name}
         </div>
       </div>
-
-      {/* 눌림 표시점 */}
-      {isPressed && (
-        <div
-          className="absolute bottom-1.5 rounded-full"
-          style={{
-            width: "clamp(6px, 1.2vw, 10px)",
-            height: "clamp(6px, 1.2vw, 10px)",
-            background: note.color,
-            boxShadow: `0 0 8px ${note.color}`,
-          }}
-        />
-      )}
     </button>
   );
 }
 
-// ─── Black Key Layer ─────────────────────────────────────────────────
-function BlackKeyLayer({
-  naturalNotes,
-  sharpNotes,
-  pressedNotes,
-  onPress,
-  onRelease,
-}: {
-  naturalNotes: Note[];
-  sharpNotes: Note[];
-  pressedNotes: Set<string>;
-  onPress: (n: Note) => void;
-  onRelease: (n: Note) => void;
-}) {
-  // 검은 건반의 흰 건반 기준 위치 매핑
-  // 흰 건반: C(0) D(1) E(2) F(3) G(4) A(5) B(6)
-  const sharpPositionMap: Record<string, number> = {
-    "C#": 0,  // C 다음 (0번 흰건반 오른쪽)
-    "D#": 1,  // D 다음 (1번 흰건반 오른쪽)
-    "F#": 3,  // F 다음 (3번 흰건반 오른쪽)
-    "G#": 4,  // G 다음 (4번 흰건반 오른쪽)
-    "A#": 5,  // A 다음 (5번 흰건반 오른쪽)
-  };
-
-  const whiteCount = naturalNotes.length;
-  const whiteWidthPct = 100 / whiteCount;
-  // 검은 건반 너비: 흰 건반의 58%
-  const blackWidthPct = whiteWidthPct * 0.58;
-
-  return (
-    <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 2 }}>
-      {sharpNotes.map((note) => {
-        const rootName = note.name.replace(/\d+$/, ""); // e.g. "C#"
-        const whiteIdx = sharpPositionMap[rootName];
-        if (whiteIdx === undefined) return null;
-
-        // 중앙: (whiteIdx + 1) * whiteWidthPct
-        const leftPct = (whiteIdx + 1) * whiteWidthPct - blackWidthPct / 2;
-        const isPressed = pressedNotes.has(note.id);
-
-        return (
-          <BlackKey
-            key={note.id}
-            note={note}
-            isPressed={isPressed}
-            leftPct={leftPct}
-            widthPct={blackWidthPct}
-            onPress={onPress}
-            onRelease={onRelease}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-// ─── Black Key ───────────────────────────────────────────────────────
-function BlackKey({
+// ─── Accidental Key (네모 박스, 샾/플랫) ────────────────────────────────
+function AccidentalKey({
   note,
   isPressed,
   leftPct,
@@ -608,66 +539,39 @@ function BlackKey({
       onPointerUp={(e) => { e.preventDefault(); e.stopPropagation(); onRelease(note); }}
       onPointerLeave={(e) => { e.preventDefault(); e.stopPropagation(); onRelease(note); }}
       onContextMenu={(e) => e.preventDefault()}
-      className="absolute top-0 flex flex-col justify-end items-center rounded-b-xl transition-transform duration-75 touch-none pointer-events-auto overflow-hidden"
+      className="absolute top-0 flex flex-col justify-center items-center rounded-lg transition-transform duration-75 touch-none overflow-hidden"
       style={{
         left: `${leftPct}%`,
         width: `${widthPct}%`,
-        height: "62%",
+        height: "100%",
         background: isPressed
-          ? `linear-gradient(180deg, ${note.color}dd 0%, ${note.color}88 100%)`
-          : "linear-gradient(180deg, #252538 0%, #12121f 55%, #1e1e32 100%)",
-        border: isPressed
-          ? `2px solid ${note.color}`
-          : "2px solid #3a3a58",
-        borderTop: "none",
-        borderRadius: "0 0 10px 10px",
+          ? `linear-gradient(160deg, ${note.color}ee 0%, ${note.color}bb 100%)`
+          : `linear-gradient(160deg, ${note.color}55 0%, ${note.color}2a 100%)`,
+        border: isPressed ? `2px solid ${note.color}` : `2px solid ${note.color}77`,
         boxShadow: isPressed
-          ? `0 0 20px ${note.color}88, inset 0 2px 4px rgba(0,0,0,0.2)`
-          : "0 8px 16px rgba(0,0,0,0.7), inset 0 -2px 3px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.05)",
-        transform: isPressed ? "translateY(3px) scaleY(0.97)" : "translateY(0)",
-        zIndex: 3,
-        paddingBottom: "5px",
+          ? `0 0 14px ${note.color}88, inset 0 2px 3px rgba(255,255,255,0.2)`
+          : "inset 0 1px 2px rgba(255,255,255,0.1), 0 2px 5px rgba(0,0,0,0.4)",
+        transform: isPressed ? "scale(0.92)" : "scale(1)",
+        zIndex: 2,
       }}
       aria-label={note.koreanFull}
       aria-pressed={isPressed}
     >
-      {/* 광택 효과 */}
-      {!isPressed && (
-        <div
-          className="absolute inset-x-0 top-0"
-          style={{
-            height: "35%",
-            background: "linear-gradient(180deg, rgba(255,255,255,0.08), transparent)",
-          }}
-        />
-      )}
-
-      {/* 눌림 효과 */}
-      {isPressed && (
-        <div
-          className="absolute inset-0"
-          style={{
-            background: `radial-gradient(ellipse at 50% 20%, ${note.color}44, transparent 70%)`,
-          }}
-        />
-      )}
-
-      {/* 라벨 */}
       <div className="relative z-10 text-center pointer-events-none">
         <div
           className="font-black leading-none"
           style={{
-            fontSize: "clamp(7px, 1.7vw, 14px)",
-            color: isPressed ? "white" : "#8888bb",
-            textShadow: isPressed ? `0 0 10px ${note.color}` : "none",
+            fontSize: "clamp(9px, 1.9vw, 15px)",
+            color: isPressed ? "#ffffff" : note.color,
+            textShadow: isPressed ? "0 0 8px rgba(0,0,0,0.35)" : "none",
           }}
         >
           {note.korean}
         </div>
         <div
           style={{
-            fontSize: "clamp(5px, 1.2vw, 10px)",
-            color: isPressed ? "rgba(255,255,255,0.7)" : "#555577",
+            fontSize: "clamp(6px, 1.1vw, 9px)",
+            color: isPressed ? "rgba(255,255,255,0.8)" : `${note.color}bb`,
             lineHeight: 1.2,
             marginTop: "1px",
           }}
