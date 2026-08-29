@@ -199,6 +199,11 @@ export function generateNotes(octave: number = 4): Note[] {
   return [...naturalNotes, ...sharpNotes];
 }
 
+// 폰 화면용: 두 옥타브(자연음 14개 + 샾/플랫 10개)를 이어붙여서 반환
+export function generateKeyboardNotes(baseOctave: number): Note[] {
+  return [...generateNotes(baseOctave), ...generateNotes(baseOctave + 1)];
+}
+
 export const INSTRUMENTS = [
   { id: "flute", name: "플루트", emoji: "🎵" },
   { id: "recorder", name: "리코더", emoji: "🪈" },
