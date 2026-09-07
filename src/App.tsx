@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { generateKeyboardNotes, INSTRUMENTS, OCTAVES, type Note } from "./lib/notes";
 import { useAudioEngine, type InstrumentType } from "./hooks/useAudioEngine";
 import { useMicrophone } from "./hooks/useMicrophone";
+import { useAdMob } from "./hooks/useAdMob";
 
 // ─── PWA Install Hook ───────────────────────────────────────────────
 interface BeforeInstallPromptEvent extends Event {
@@ -76,6 +77,15 @@ export default function App() {
 
   const { startNote, stopNote, stopAllNotes } = useAudioEngine();
   const { installable, install } = usePWAInstall();
+  const { isNativeApp, notifyInstrumentChange } = useAdMob();
+
+  const handleSelectInstrument = useCallback(
+    (id: InstrumentType) => {
+      setSelectedInstrument(id);
+      notifyInstrumentChange();
+    },
+    [notifyInstrumentChange]
+  );
 
   // 폰 화면 한 줄에 담을 두 옥타브 분량(자연음 14개 + 샾/플랫 10개)
   const notes = generateKeyboardNotes(selectedOctave);
@@ -312,7 +322,7 @@ export default function App() {
           return (
             <button
               key={inst.id}
-              onClick={() => setSelectedInstrument(inst.id as InstrumentType)}
+              onClick={() => handleSelectInstrument(inst.id as InstrumentType)}
               className="flex-shrink-0 flex items-center gap-1 rounded-lg font-semibold transition-all"
               style={{
                 padding: "5px 10px",
@@ -367,6 +377,18 @@ export default function App() {
           onPress={handleNotePress}
           onRelease={handleNoteRelease}
         />
+      </div>
+
+      {/* ═══ BANNER AD 영역 ═══ */}
+      {/* 네이티브 앱(Capacitor)에서는 AdMob 배너가 이 자리를 실제로 차지합니다.
+          웹 미리보기에서는 자리만 예약해두고 라벨만 살짝 보여줍니다. */}
+      <div
+        className="flex-shrink-0 flex items-center justify-center"
+        style={{ height: "50px", background: "rgba(0,0,0,0.35)", borderTop: "1px solid rgba(255,255,255,0.06)" }}
+      >
+        {!isNativeApp && (
+          <span style={{ fontSize: "10px", color: "rgba(255,255,255,0.25)" }}>배너 광고 영역</span>
+        )}
       </div>
     </div>
   );
