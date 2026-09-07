@@ -205,6 +205,7 @@ export function generateKeyboardNotes(baseOctave: number): Note[] {
 }
 
 export const INSTRUMENTS = [
+  { id: "piano", name: "피아노", emoji: "🎹" },
   { id: "flute", name: "플루트", emoji: "🎵" },
   { id: "recorder", name: "리코더", emoji: "🪈" },
   { id: "ocarina", name: "오카리나", emoji: "🫙" },
