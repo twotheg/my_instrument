@@ -3,6 +3,7 @@ import { generateKeyboardNotes, INSTRUMENTS, OCTAVES, type Note } from "./lib/no
 import { useAudioEngine, type InstrumentType } from "./hooks/useAudioEngine";
 import { useMicrophone } from "./hooks/useMicrophone";
 import { useAdMob } from "./hooks/useAdMob";
+import { useLockLandscapeFullscreen } from "./hooks/useLockLandscapeFullscreen";
 
 // ─── PWA Install Hook ───────────────────────────────────────────────
 interface BeforeInstallPromptEvent extends Event {
@@ -78,6 +79,7 @@ export default function App() {
   const { startNote, stopNote, stopAllNotes } = useAudioEngine();
   const { installable, install } = usePWAInstall();
   const { isNativeApp, notifyInstrumentChange } = useAdMob();
+  useLockLandscapeFullscreen();
 
   const handleSelectInstrument = useCallback(
     (id: InstrumentType) => {
