@@ -9,8 +9,8 @@ import { useCallback, useEffect, useRef } from "react";
 // 값으로 바꿔주세요. (테스트 중에는 구글 공식 테스트 ID를 그대로 써도 됩니다)
 // ─────────────────────────────────────────────────────────────────────
 
-const BANNER_AD_UNIT_ID = "ca-app-pub-3940256099942544/6300978111"; // TODO: 실제 배너 광고 단위 ID로 교체
-const INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-3940256099942544/1033173712"; // TODO: 실제 전면 광고 단위 ID로 교체
+const BANNER_AD_UNIT_ID = "ca-app-pub-4424569297437395/3970288682"; // TODO: 실제 배너 광고 단위 ID로 교체
+const INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-4424569297437395/5568994166"; // TODO: 실제 전면 광고 단위 ID로 교체
 
 // 악기를 몇 번 바꿀 때마다 전면 광고를 띄울지
 const INTERSTITIAL_EVERY_N_SWITCHES = 4;
